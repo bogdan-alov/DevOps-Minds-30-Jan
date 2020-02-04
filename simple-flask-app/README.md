@@ -8,4 +8,4 @@ The application has a Dockerfile and a Helm chart for Kubernetes deployments as 
 
 In order to get it up and running in Kubernetes you must first setup Jenkins and Helm on your cluster or you can install it manually.
 
-> helm upgrade --install python-app python-app --namespace demo
+> helm upgrade --install python-app deploy/python-app --namespace demo
