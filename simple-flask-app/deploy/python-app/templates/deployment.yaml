@@ -1,0 +1,82 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "python-app.fullname" . }}
+  labels:
+    app.kubernetes.io/name: {{ include "python-app.name" . }}
+    helm.sh/chart: {{ include "python-app.chart" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "python-app.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ include "python-app.name" . }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+    spec:
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          env:
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: aws-credentials-secret
+                  key: access-key
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: aws-credentials-secret
+                  key: secret-key
+            - name: CONSUMER_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: twitter-api-credentials-secret
+                  key: consumer-token
+            - name: CONSUMER_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: twitter-api-credentials-secret
+                  key: consumer-secret
+            - name: TWITTER_API_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: twitter-api-credentials-secret
+                  key: api-access-key
+            - name: TWITTER_API_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: twitter-api-credentials-secret
+                  key: api-secret-key
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 5000
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+    {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}

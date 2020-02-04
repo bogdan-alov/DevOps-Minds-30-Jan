@@ -1,0 +1,85 @@
+// Helm variables
+def HELM_VERSION = "v2.14.3"
+def HELM_FILENAME = "helm-${HELM_VERSION}-linux-amd64.tar.gz"
+def HELM_DOWNLOAD_URL = "https://storage.googleapis.com/kubernetes-helm/${HELM_FILENAME}"
+
+// Dependencies
+def HELM_INSTALL = "curl -L ${HELM_DOWNLOAD_URL} | tar xz && mv linux-amd64/helm /bin/helm && rm -rf linux-amd64"
+def AWSCLI_SETUP = "apk add --update python curl python-dev py-pip build-base && pip install awscli==1.17.9 --upgrade && apk --purge -v del py-pip && rm -rf /var/cache/apk/*"
+
+pipeline {
+    agent none
+    stages {
+	
+		// Build only from master branch
+        stage('master') {
+            when {
+                branch "master"
+                beforeAgent true 
+            }
+			
+			// Setup Jenkins runner
+            agent {
+                kubernetes {
+                        defaultContainer 'docker-container'
+                        yamlFile "jenkins-containers.yml"
+                        label "deploy"
+                    }
+            }
+
+            // Set environment variables 
+            environment {
+                AWS_ACCOUNT_ID="393648084725"
+                AWS_REGION="eu-central-1"
+                APP_NAME="python-demo-app"
+                NAMESPACE="python-app"
+                DOCKER_REPO_HOST="${env.AWS_ACCOUNT_ID}.dkr.ecr.${env.AWS_REGION}.amazonaws.com"
+                DOCKER_REPO_PATH="/${env.APP_NAME}"
+                DOCKER_REPOSITORY="${env.DOCKER_REPO_HOST}${env.DOCKER_REPO_PATH}"
+                DOCKER_TAG="${GIT_BRANCH}_${GIT_COMMIT}"
+            }
+
+            stages {
+					// Install dependencies
+					stage('Install dependencies and ') {
+                        steps {
+                            script {
+                                sh "${AWSCLI_SETUP} && ${HELM_INSTALL}"
+                            }
+                        }
+                    }
+
+                    // Build and push image to ECR 
+                    stage('Build and Push Image to ECR') {
+                        steps {
+                            script {
+                                sh "eval \$(aws ecr get-login --no-include-email --region eu-central-1)"
+								
+                                sh  """
+                                    docker build -t ${env.APP_NAME}:${env.DOCKER_TAG} -f . 
+                                    docker tag ${env.APP_NAME}:${env.DOCKER_TAG} ${env.DOCKER_REPOSITORY}:${env.DOCKER_TAG}
+                                    docker push ${env.DOCKER_REPOSITORY}:${env.DOCKER_TAG}
+                                    """ 
+                            }
+                        }
+                    }
+					
+					// Deploy to K8s
+                    stage('Deploy to K8s') {
+                        steps {
+                            script {
+                                    sh "aws eks --region eu-central-1 update-kubeconfig --name eks-devops_minds"
+
+                                    // Deploy with helm
+                                    sh """
+                                        helm init -c
+                                        helm upgrade --install ${env.APP_NAME} python-app \
+                                        --namespace ${env.NAMESPACE} 
+                                    """
+                            }
+                        }
+                    }
+            }
+        }
+    }
+}

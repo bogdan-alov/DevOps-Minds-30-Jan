@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: Pod
+spec:
+  containers:
+    - name: build-container
+      image: mikesir87/aws-cli:latest
+      imagePullPolicy: Always
+      env:
+        - name: DOCKER_HOST
+          value: tcp://localhost:2375
+      command:
+        - cat
+      tty: true
+      volumeMounts:
+        - name:  build-root
+          mountPath: /root
+    - name: docker-container
+      image: docker:19.03-dind 
+      securityContext:
+        privileged: true
+  nodeSelector: {}
+  restartPolicy: "Never"
+  volumes:
+    - name: build-root
+      emptyDir: {}
