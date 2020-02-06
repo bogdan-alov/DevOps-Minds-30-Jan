@@ -16,15 +16,14 @@ https://docs.instana.io/ecosystem/python/#installing
 Jenkins Monitoring:
 https://docs.instana.io/ecosystem/jenkins/
 
-Node.js instrumentation
+Node.js instrumentation:
 https://docs.instana.io/ecosystem/node-js/
-Sometimes node.js can be a pain to instrument
 
 Mysql or other DBs require root user/pass credentials to the DB:
 https://docs.instana.io/ecosystem/mysql/
 
 
-To try Instana free:
+To try Instana for free:
 https://www.instana.com/apm-trial/
 
 If you have questions whether a technology is supported, please visit Instana documentation and search for it:
